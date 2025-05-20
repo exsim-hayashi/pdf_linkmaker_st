@@ -19,7 +19,6 @@ def add_link_to_pdf(pdf_bytes, x1_mm, y1_mm, x2_mm, y2_mm, url):
     # URLリンクを追加
     page.insert_link({"kind": fitz.LINK_URI, "from": rect, "uri": url})
 
-    # 変更後のPDFをバイトデータとして取得
     output_bytes = io.BytesIO()
     doc.save(output_bytes)
     doc.close()
@@ -28,57 +27,57 @@ def add_link_to_pdf(pdf_bytes, x1_mm, y1_mm, x2_mm, y2_mm, url):
     return output_bytes
 
 def main():
-    # Streamlit UI
-    st.title("ID PDF にリンクを埋め込むアプリ")
+    st.set_page_config(page_title="PDFにリンクを埋め込む", layout="centered")
 
-    # noindex 設定
+    st.title("📎 PDF にリンクを埋め込むツール")
+
+    # noindex 設定（SEO対策）
     st.markdown(
-        """
-        <meta name="robots" content="noindex, nofollow">
-        """,
+        """<meta name="robots" content="noindex, nofollow">""",
         unsafe_allow_html=True
     )
 
-    # PDF アップロード
-    uploaded_file = st.file_uploader("📤 **PDFをアップロード**", type="pdf")
-
-    # プリセット座標の選択
+    # プリセットの設定
     presets = {
         "本店用": (242.70, 191.00, 266.30, 207.30, "https://ikken-s.com/idhomehontenone"),
         "小山店用": (242.77, 188.95, 266.07, 205.53, "https://ikken-s.com/idhomeoyama")
     }
-    
-    preset_choice = st.selectbox("📌 **プリセットを選択**", list(presets.keys()))
 
-    # ユーザー入力（プリセットを選択したら値を更新）
-    x1_mm, y1_mm, x2_mm, y2_mm, preset_url = presets[preset_choice]
+    uploaded_file = st.file_uploader("📤 PDFをアップロード", type="pdf")
 
-    url = st.text_input("🔗 **リンク先のURLを入力**", preset_url)
-    
-    st.write("**調整用オプション**")
-    
-    x1_mm = st.number_input("X1 (mm)", min_value=0.0, value=x1_mm)
-    y1_mm = st.number_input("Y1 (mm)", min_value=0.0, value=y1_mm)
-    x2_mm = st.number_input("X2 (mm)", min_value=0.0, value=x2_mm)
-    y2_mm = st.number_input("Y2 (mm)", min_value=0.0, value=y2_mm)
-
-    # リンク追加ボタン
-    if uploaded_file and st.button("🔧 PDF にリンクを埋め込む"):
+    if uploaded_file:
+        # アップロード直後にファイルを読んでセッション保存
         pdf_bytes = uploaded_file.read()
-        output_pdf = add_link_to_pdf(pdf_bytes, x1_mm, y1_mm, x2_mm, y2_mm, url)
+        st.session_state["pdf_bytes"] = pdf_bytes
+        st.session_state["filename"] = uploaded_file.name
 
-        # 元のファイル名を取得し、「_リンク追加済」を追加
-        original_filename = uploaded_file.name  # 元のファイル名
-        base_name, ext = os.path.splitext(original_filename)  # 拡張子分離
-        output_filename = f"{base_name}_リンク追加済{ext}"  # 新しいファイル名
+    if "pdf_bytes" in st.session_state:
+        preset_choice = st.selectbox("📌 プリセットを選択", list(presets.keys()))
+        x1_mm, y1_mm, x2_mm, y2_mm, default_url = presets[preset_choice]
 
-        # ダウンロードボタン
+        url = st.text_input("🔗 リンク先のURL", default_url)
+
+        st.write("**🔧 座標を調整（単位: mm）**")
+        x1_mm = st.number_input("X1", value=x1_mm, key="x1")
+        y1_mm = st.number_input("Y1", value=y1_mm, key="y1")
+        x2_mm = st.number_input("X2", value=x2_mm, key="x2")
+        y2_mm = st.number_input("Y2", value=y2_mm, key="y2")
+
+        # リンク処理はすぐ実行、セッションが切れる前に済ませる
+        output_pdf = add_link_to_pdf(st.session_state["pdf_bytes"], x1_mm, y1_mm, x2_mm, y2_mm, url)
+
+        # ファイル名を変更
+        base_name, ext = os.path.splitext(st.session_state["filename"])
+        output_filename = f"{base_name}_リンク追加済{ext}"
+
         st.download_button(
             label="📥 加工済みPDFをダウンロード",
             data=output_pdf,
             file_name=output_filename,
             mime="application/pdf"
         )
+    else:
+        st.info("まず PDF をアップロードしてください。")
 
 if __name__ == "__main__":
     main()
