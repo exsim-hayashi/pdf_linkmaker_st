@@ -24,61 +24,61 @@ def add_link_to_pdf(pdf_bytes, x1_mm, y1_mm, x2_mm, y2_mm, url):
     doc.save(output_bytes)
     doc.close()
     output_bytes.seek(0)
-    
+
     return output_bytes
 
 def main():
-    # Streamlit UI
-    st.title("ID PDF にリンクを埋め込むアプリ")
+    st.title("📎 PDF にリンクを埋め込むアプリ")
 
     # noindex 設定
-    st.markdown(
-        """
-        <meta name="robots" content="noindex, nofollow">
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("<meta name='robots' content='noindex, nofollow'>", unsafe_allow_html=True)
 
-    # PDF アップロード
-    uploaded_file = st.file_uploader("📤 **PDFをアップロード**", type="pdf")
-
-    # プリセット座標の選択
+    # プリセット座標とURL
     presets = {
         "本店用": (242.70, 191.00, 266.30, 207.30, "https://ikken-s.com/idhomehontenone"),
         "小山店用": (242.77, 188.95, 266.07, 205.53, "https://ikken-s.com/idhomeoyama")
     }
-    
-    preset_choice = st.selectbox("📌 **プリセットを選択**", list(presets.keys()))
 
-    # ユーザー入力（プリセットを選択したら値を更新）
-    x1_mm, y1_mm, x2_mm, y2_mm, preset_url = presets[preset_choice]
+    # プリセット選択
+    preset_choice = st.selectbox("📌 プリセットを選択", list(presets.keys()))
+    x1_mm, y1_mm, x2_mm, y2_mm, default_url = presets[preset_choice]
 
-    url = st.text_input("🔗 **リンク先のURLを入力**", preset_url)
-    
-    st.write("**調整用オプション**")
-    
-    x1_mm = st.number_input("X1 (mm)", min_value=0.0, value=x1_mm)
-    y1_mm = st.number_input("Y1 (mm)", min_value=0.0, value=y1_mm)
-    x2_mm = st.number_input("X2 (mm)", min_value=0.0, value=x2_mm)
-    y2_mm = st.number_input("Y2 (mm)", min_value=0.0, value=y2_mm)
+    url = st.text_input("🔗 リンク先URL", default_url)
+    st.write("📐 リンクエリア（単位：mm）")
+    x1_mm = st.number_input("X1", min_value=0.0, value=x1_mm)
+    y1_mm = st.number_input("Y1", min_value=0.0, value=y1_mm)
+    x2_mm = st.number_input("X2", min_value=0.0, value=x2_mm)
+    y2_mm = st.number_input("Y2", min_value=0.0, value=y2_mm)
 
-    # リンク追加ボタン
-    if uploaded_file and st.button("🔧 PDF にリンクを埋め込む"):
-        pdf_bytes = uploaded_file.read()
-        output_pdf = add_link_to_pdf(pdf_bytes, x1_mm, y1_mm, x2_mm, y2_mm, url)
+    # アップロードと読み込みをフォームで囲む
+    with st.form("upload_form"):
+        uploaded_file = st.file_uploader("📤 PDF をアップロード", type=["pdf"])
+        load_pdf = st.form_submit_button("✅ PDFを読み込む")
 
-        # 元のファイル名を取得し、「_リンク追加済」を追加
-        original_filename = uploaded_file.name  # 元のファイル名
-        base_name, ext = os.path.splitext(original_filename)  # 拡張子分離
-        output_filename = f"{base_name}_リンク追加済{ext}"  # 新しいファイル名
+    if load_pdf and uploaded_file:
+        st.session_state["pdf_bytes"] = uploaded_file.read()
+        st.session_state["pdf_name"] = uploaded_file.name
+        st.success("✅ PDF を読み込みました。リンク追加の準備ができました。")
 
-        # ダウンロードボタン
-        st.download_button(
-            label="📥 加工済みPDFをダウンロード",
-            data=output_pdf,
-            file_name=output_filename,
-            mime="application/pdf"
-        )
+    # PDF が読み込まれていれば処理ボタン表示
+    if "pdf_bytes" in st.session_state:
+        if st.button("🔧 PDF にリンクを埋め込む"):
+            output_pdf = add_link_to_pdf(
+                st.session_state["pdf_bytes"],
+                x1_mm, y1_mm, x2_mm, y2_mm, url
+            )
+
+            # 元のファイル名から出力名を作成
+            base_name, ext = os.path.splitext(st.session_state.get("pdf_name", "output.pdf"))
+            output_filename = f"{base_name}_リンク追加済{ext}"
+
+            # ダウンロードボタン表示
+            st.download_button(
+                label="📥 加工済みPDFをダウンロード",
+                data=output_pdf,
+                file_name=output_filename,
+                mime="application/pdf"
+            )
 
 if __name__ == "__main__":
     main()
