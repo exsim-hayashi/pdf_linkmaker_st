@@ -40,7 +40,7 @@ def main():
     )
 
     # PDF アップロード
-    uploaded_file = st.file_uploader("📤 **PDFをアップロード**", type="pdf")
+    uploaded_file = st.file_uploader("📤 **PDFをアップロード**", "pdf")
 
     # プリセット座標の選択
     presets = {
